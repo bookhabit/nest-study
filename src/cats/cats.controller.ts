@@ -1,39 +1,19 @@
-import {
-  Controller,
-  Get,
-  Query,
-  Post,
-  Body,
-  Put,
-  Param,
-  Delete,
-} from '@nestjs/common';
-import { CreateCatDto, UpdateCatDto, ListAllEntities } from './dto';
+import { Controller, Get, Post, Body } from '@nestjs/common';
+import { CreateCatDto } from './dto';
+import { CatsService } from './cats.service';
+import { Cat } from './interfaces/cat.interface';
 
 @Controller('cats')
 export class CatsController {
+  constructor(private catsService: CatsService) {}
+
   @Post()
-  create(@Body() createCatDto: CreateCatDto) {
-    return '새로운 고양이를 추가합니다';
+  async create(@Body() createCatDto: CreateCatDto) {
+    this.catsService.create(createCatDto);
   }
 
   @Get()
-  findAll(@Query() query: ListAllEntities) {
-    return `모든 고양이를 반환합니다 (제한: ${query.limit}개)`;
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return `#${id} 고양이를 반환합니다`;
-  }
-
-  @Put(':id')
-  update(@Param('id') id: string, @Body() updateCatDto: UpdateCatDto) {
-    return `#${id} 고양이를 업데이트합니다`;
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return `#${id} 고양이를 삭제합니다`;
+  async findAll(): Promise<Cat[]> {
+    return this.catsService.findAll();
   }
 }
