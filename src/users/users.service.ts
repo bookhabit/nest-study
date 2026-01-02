@@ -1,4 +1,8 @@
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { VerifyEmailDto } from './dto/verify-user.dto';
 import * as uuid from 'uuid';
 import { EmailService } from 'src/email/email.service';
@@ -6,7 +10,7 @@ import { LoginDto } from './dto/login-user.dto';
 import { UserInfo } from './UserInfo';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from './entities/user.entity';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { ulid } from 'ulid';
 
 @Injectable()
@@ -15,6 +19,7 @@ export class UsersService {
     private emailService: EmailService,
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
+    private dataSource: DataSource,
   ) {}
 
   /**
@@ -47,14 +52,18 @@ export class UsersService {
     password: string,
     signupVerifyToken: string,
   ) {
-    const user = new UserEntity();
-    user.id = ulid();
-    user.name = name;
-    user.email = email;
-    user.password = password;
-    user.signupVerifyToken = signupVerifyToken;
-    console.log('saveUser', user);
-    await this.userRepository.save(user);
+    // await this.saveUserUsingQueryRunner(
+    //   name,
+    //   email,
+    //   password,
+    //   signupVerifyToken,
+    // );
+    await this.saveUserUsingTransaction(
+      name,
+      email,
+      password,
+      signupVerifyToken,
+    );
   }
 
   private sendMemberJoinEmail(
@@ -63,6 +72,56 @@ export class UsersService {
   ): Promise<void> {
     console.log('sendMemberJoinEmail', email, signupVerifyToken);
     return this.emailService.sendMemberJoinEmail(email, signupVerifyToken);
+  }
+
+  private async saveUserUsingQueryRunner(
+    name: string,
+    email: string,
+    password: string,
+    signupVerifyToken: string,
+  ) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const user = new UserEntity();
+      user.id = ulid();
+      user.name = name;
+      user.email = email;
+      user.password = password;
+      user.signupVerifyToken = signupVerifyToken;
+
+      // 유저 저장
+      await queryRunner.manager.save(UserEntity, user);
+
+      // 정상동작 수행 시 커밋 - 트랜잭션 커밋
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      // 에러 발생 시 롤백
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      // 쿼리 실행 후 연결 해제 - queryRunner 객체 해제
+      await queryRunner.release();
+    }
+  }
+
+  private async saveUserUsingTransaction(
+    name: string,
+    email: string,
+    password: string,
+    signupVerifyToken: string,
+  ) {
+    await this.dataSource.transaction(async (transactionalEntityManager) => {
+      const user = new UserEntity();
+      user.id = ulid();
+      user.name = name;
+      user.email = email;
+      user.password = password;
+      user.signupVerifyToken = signupVerifyToken;
+      await transactionalEntityManager.save(UserEntity, user);
+      // throw new InternalServerErrorException('트랜잭션 에러');
+    });
   }
 
   /**
