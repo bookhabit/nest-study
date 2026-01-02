@@ -1,13 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { VerifyEmailDto } from './dto/verify-user.dto';
 import * as uuid from 'uuid';
 import { EmailService } from 'src/email/email.service';
 import { LoginDto } from './dto/login-user.dto';
 import { UserInfo } from './UserInfo';
+import { InjectRepository } from '@nestjs/typeorm';
+import { UserEntity } from './entities/user.entity';
+import { Repository } from 'typeorm';
+import { ulid } from 'ulid';
 
 @Injectable()
 export class UsersService {
-  constructor(private emailService: EmailService) {}
+  constructor(
+    private emailService: EmailService,
+    @InjectRepository(UserEntity)
+    private userRepository: Repository<UserEntity>,
+  ) {}
 
   /**
    * 회원 가입
@@ -16,7 +24,10 @@ export class UsersService {
    * @param password
    */
   async createUser(name: string, email: string, password: string) {
-    await this.checkUserExists(email);
+    const userExists = await this.checkUserExists(email);
+    if (userExists) {
+      throw new UnprocessableEntityException('이미 존재하는 이메일입니다.');
+    }
 
     const signupVerifyToken = uuid.v1();
 
@@ -24,18 +35,26 @@ export class UsersService {
 
     await this.sendMemberJoinEmail(email, signupVerifyToken);
   }
-  private checkUserExists(email: string): Promise<boolean> {
-    return Promise.resolve(false); // TODO : DB연동 후 구현
+  private async checkUserExists(email: string): Promise<boolean> {
+    const user = await this.userRepository.findOne({ where: { email } });
+    console.log('checkUserExists', user);
+    return user !== null;
   }
 
-  private saveUser(
+  private async saveUser(
     name: string,
     email: string,
     password: string,
     signupVerifyToken: string,
-  ): Promise<void> {
-    console.log('saveUser', name, email, password, signupVerifyToken);
-    return Promise.resolve(); // TODO : DB연동 후 구현
+  ) {
+    const user = new UserEntity();
+    user.id = ulid();
+    user.name = name;
+    user.email = email;
+    user.password = password;
+    user.signupVerifyToken = signupVerifyToken;
+    console.log('saveUser', user);
+    await this.userRepository.save(user);
   }
 
   private sendMemberJoinEmail(

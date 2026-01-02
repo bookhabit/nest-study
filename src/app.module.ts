@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
 import { join } from 'path';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { UsersModule } from './users/users.module';
-import { ConfigModule } from '@nestjs/config';
 import emailConfig from './config/emailConfig';
+import databaseConfig from './config/databaseConfig';
 import { validationSchema } from './config/validationSchema';
+import { UserEntity } from './users/entities/user.entity';
 
 // 환경 파일 경로 설정
 const nodeEnv = process.env.NODE_ENV || 'development';
@@ -18,17 +21,36 @@ console.log('🔍 NODE_ENV:', nodeEnv);
 
 @Module({
   imports: [
-    UsersModule,
+    // ConfigModule을 먼저 로드하여 환경 변수를 사용할 수 있도록 함
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: [envFilePath],
-      load: [emailConfig],
+      load: [emailConfig, databaseConfig],
       validationSchema,
       validationOptions: {
         allowUnknown: true,
         abortEarly: true,
       },
     }),
+    // TypeOrmModule은 ConfigModule 이후에 로드하고 ConfigService를 사용
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const dbConfig = configService.get('database');
+        return {
+          type: dbConfig.type,
+          host: dbConfig.host,
+          port: dbConfig.port,
+          username: dbConfig.username,
+          password: dbConfig.password,
+          database: dbConfig.database,
+          entities: [UserEntity],
+          synchronize: dbConfig.synchronize,
+        };
+      },
+    }),
+    UsersModule,
   ],
   controllers: [],
   providers: [],
