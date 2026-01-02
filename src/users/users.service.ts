@@ -76,7 +76,7 @@ export class UsersService {
    * @param id
    * @returns
    */
-  getUserInfo(id: string): Promise<UserInfo> {
+  getUserInfo(id: number): Promise<UserInfo> {
     // TODO
     // 1. id를 가진 유저가 존재하는지 db 에서 확인 후 에러처리
     // 2. 존재한다면 유저 UserInfo type으로 반환

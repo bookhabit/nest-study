@@ -9,6 +9,9 @@ import {
   BadRequestException,
   Redirect,
   Query,
+  ParseIntPipe,
+  DefaultValuePipe,
+  ValidationPipe,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -22,7 +25,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  async create(@Body() createUserDto: CreateUserDto) {
+  async create(@Body(ValidationPipe) createUserDto: CreateUserDto) {
     const { name, email, password } = createUserDto;
 
     // password를 문자열로 변환 (Postman에서 숫자로 보낸 경우 대비)
@@ -46,8 +49,19 @@ export class UsersController {
     return this.usersService.login(dto);
   }
 
+  @Get()
+  findAll(
+    @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    console.log(offset, limit);
+    return 'findAll';
+  }
+
   @Get(':id')
-  async getUserInfo(@Param('id') id: string): Promise<UserInfo> {
+  async getUserInfo(
+    @Param('id', ValidationPipe) id: number,
+  ): Promise<UserInfo> {
     return this.usersService.getUserInfo(id);
   }
 }
