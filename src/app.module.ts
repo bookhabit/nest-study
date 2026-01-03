@@ -9,8 +9,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
 import emailConfig from './config/emailConfig';
 import databaseConfig from './config/databaseConfig';
+import authConfig from './config/authConfig';
 import { validationSchema } from './config/validationSchema';
 import { UserEntity } from './users/entities/user.entity';
 import { LoggerMiddleware, LoggerMiddleware2 } from './logger.middleware';
@@ -31,7 +33,7 @@ console.log('🔍 NODE_ENV:', nodeEnv);
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: [envFilePath],
-      load: [emailConfig, databaseConfig],
+      load: [emailConfig, databaseConfig, authConfig],
       validationSchema,
       validationOptions: {
         allowUnknown: true,
@@ -57,6 +59,7 @@ console.log('🔍 NODE_ENV:', nodeEnv);
       },
     }),
     UsersModule,
+    AuthModule,
   ],
   controllers: [],
   providers: [],

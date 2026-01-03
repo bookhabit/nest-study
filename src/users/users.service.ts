@@ -12,6 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from './entities/user.entity';
 import { DataSource, Repository } from 'typeorm';
 import { ulid } from 'ulid';
+import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
 export class UsersService {
@@ -20,6 +21,7 @@ export class UsersService {
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
     private dataSource: DataSource,
+    private authService: AuthService,
   ) {}
 
   /**
@@ -129,11 +131,20 @@ export class UsersService {
    * @param dto
    * @returns
    */
-  verifyEmail(dto: VerifyEmailDto): Promise<string> {
-    // TODO : DB연동 후 구현
+  async verifyEmail(dto: VerifyEmailDto): Promise<string> {
     // 1. db에서 signupVerifyToken으로 회원 가입 여부 확인 후 에러처리
+    const user = await this.userRepository.findOne({
+      where: { signupVerifyToken: dto.signupVerifyToken },
+    });
+    if (!user) {
+      throw new UnprocessableEntityException('유저가 존재하지 않습니다.');
+    }
     // 2. 로그인 - jwt 토큰 발급
-    return Promise.resolve('method verifyEmail');
+    return this.authService.login({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    });
   }
 
   /**
@@ -141,12 +152,22 @@ export class UsersService {
    * @param dto
    * @returns
    */
-  login(dto: LoginDto): Promise<string> {
-    // TODO
-    // 1. email, password 를 가진 유저가 존재하는지 db 에서 확인 후 에러처리
-    // 2. 존재한다면 jwt 토큰 발급
-    // 3. 존재하지 않는다면 에러 처리
-    return Promise.resolve('method login');
+  async login(email: string, password: string) {
+    // 1. db에서 email, password로 유저 존재 여부 확인 후 에러처리
+    const user = await this.userRepository.findOne({
+      where: { email, password },
+    });
+    if (!user) {
+      throw new UnprocessableEntityException(
+        '이메일 또는 비밀번호가 일치하지 않습니다.',
+      );
+    }
+    // 2. 로그인 - jwt 토큰 발급 후 반환
+    return this.authService.login({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    });
   }
 
   /**
@@ -154,11 +175,17 @@ export class UsersService {
    * @param id
    * @returns
    */
-  getUserInfo(id: number): Promise<UserInfo> {
-    // TODO
+  async getUserInfo(userId: string): Promise<UserInfo> {
     // 1. id를 가진 유저가 존재하는지 db 에서 확인 후 에러처리
+    const user = await this.userRepository.findOne({ where: { id: userId } });
     // 2. 존재한다면 유저 UserInfo type으로 반환
-    // 3. 존재하지 않는다면 에러 처리
-    return Promise.resolve({ id: 1, name: 'test', email: 'test@test.com' });
+    if (!user) {
+      throw new UnprocessableEntityException('유저가 존재하지 않습니다.');
+    }
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    };
   }
 }

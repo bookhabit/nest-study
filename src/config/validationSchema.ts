@@ -12,4 +12,7 @@ export const validationSchema = Joi.object({
   DATABASE_PASSWORD: Joi.string().required(),
   DATABASE_NAME: Joi.string().required(),
   DATABASE_SYNCHRONIZE: Joi.string().default('false'),
+  // 인증 설정
+  AUTH_SECRET: Joi.string().required(),
+  AUTH_EXPIRES_IN: Joi.string().default('1d'),
 });
