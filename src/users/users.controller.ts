@@ -15,6 +15,7 @@ import {
   Headers,
   UseGuards,
 } from '@nestjs/common';
+import { CommandBus } from '@nestjs/cqrs';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDto } from './dto/login-user.dto';
@@ -23,10 +24,12 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UserInfo } from './UserInfo';
 import { AuthService } from 'src/auth/auth.service';
 import { AuthGuard } from 'src/auth/guard';
+import { CreateUserCommand } from './commands/create-user.command';
 
 @Controller('users')
 export class UsersController {
   constructor(
+    private readonly commandBus: CommandBus,
     private readonly usersService: UsersService,
     private readonly authService: AuthService,
   ) {}
@@ -38,7 +41,10 @@ export class UsersController {
     // password를 문자열로 변환 (Postman에서 숫자로 보낸 경우 대비)
     const passwordString = String(password);
 
-    await this.usersService.createUser(name, email, passwordString);
+    // CQRS 패턴: CommandBus를 통해 명령 전달
+    await this.commandBus.execute(
+      new CreateUserCommand(name, email, passwordString),
+    );
 
     return {
       message: '회원 가입이 완료되었습니다.',
