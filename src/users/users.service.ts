@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { VerifyEmailDto } from './dto/verify-user.dto';
 import * as uuid from 'uuid';
-import { EmailService } from 'src/email/email.service';
 import { LoginDto } from './dto/login-user.dto';
 import { UserInfo } from './UserInfo';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -17,7 +16,6 @@ import { AuthService } from 'src/auth/auth.service';
 @Injectable()
 export class UsersService {
   constructor(
-    private emailService: EmailService,
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
     private dataSource: DataSource,
@@ -29,8 +27,13 @@ export class UsersService {
    * @param name
    * @param email
    * @param password
+   * @returns signupVerifyToken - 이벤트 발행에 사용
    */
-  async createUser(name: string, email: string, password: string) {
+  async createUser(
+    name: string,
+    email: string,
+    password: string,
+  ): Promise<string> {
     const userExists = await this.checkUserExists(email);
     if (userExists) {
       throw new UnprocessableEntityException('이미 존재하는 이메일입니다.');
@@ -40,7 +43,8 @@ export class UsersService {
 
     await this.saveUser(name, email, password, signupVerifyToken);
 
-    await this.sendMemberJoinEmail(email, signupVerifyToken);
+    // 이메일 전송은 이벤트로 처리 (비동기)
+    return signupVerifyToken;
   }
   private async checkUserExists(email: string): Promise<boolean> {
     const user = await this.userRepository.findOne({ where: { email } });
@@ -68,13 +72,14 @@ export class UsersService {
     );
   }
 
-  private sendMemberJoinEmail(
-    email: string,
-    signupVerifyToken: string,
-  ): Promise<void> {
-    console.log('sendMemberJoinEmail', email, signupVerifyToken);
-    return this.emailService.sendMemberJoinEmail(email, signupVerifyToken);
-  }
+  // 이메일 전송은 이벤트 핸들러로 이동됨
+  // private sendMemberJoinEmail(
+  //   email: string,
+  //   signupVerifyToken: string,
+  // ): Promise<void> {
+  //   console.log('sendMemberJoinEmail', email, signupVerifyToken);
+  //   return this.emailService.sendMemberJoinEmail(email, signupVerifyToken);
+  // }
 
   private async saveUserUsingQueryRunner(
     name: string,

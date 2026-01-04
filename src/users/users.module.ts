@@ -7,10 +7,11 @@ import { UserEntity } from './entities/user.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { CreateUserHandler } from './handlers/create-user.handler';
+import { UserCreatedHandler } from './handlers/user-created.handler';
 
 @Module({
   controllers: [UsersController],
-  providers: [UsersService, CreateUserHandler],
+  providers: [UsersService, CreateUserHandler, UserCreatedHandler],
   imports: [
     CqrsModule, // CQRS 모듈 추가
     EmailModule,
