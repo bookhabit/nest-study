@@ -22,12 +22,8 @@ export class UserCreatedHandler implements IEventHandler<UserCreatedEvent> {
       await this.emailService.sendMemberJoinEmail(email, signupVerifyToken);
       this.logger.log(`✅ 회원가입 이메일 전송 완료: ${email}`);
     } catch (error) {
-      this.logger.error(
-        `❌ 회원가입 이메일 전송 실패: ${email}`,
-        error.stack,
-      );
+      this.logger.error(`❌ 회원가입 이메일 전송 실패: ${email}`, error.stack);
       // 이메일 전송 실패해도 회원가입은 성공한 것으로 처리
     }
   }
 }
-
